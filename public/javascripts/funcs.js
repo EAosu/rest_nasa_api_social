@@ -18,9 +18,6 @@ const validateName = (event) =>{
 async function displayImagesFromURL(event) {
     event.preventDefault()
 
-    let currentDate = new Date(document.getElementById("productId1").value)
-    let endDate = new Date() //Today's date
-
     let key = "gqRjbR1ocVYMPviB9JoPqsVnLihxTOBKZLMGDdEm"
     let theurl = "https://api.nasa.gov/planetary/apod?api_key=" + key
     let url = `${theurl}&start_date=${document.getElementById("productId1").value}`
