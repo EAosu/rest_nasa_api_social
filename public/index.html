@@ -11,12 +11,40 @@
 
 <body>
 <div class="container">
-    <div class="row">
-        <h1>Express</h1>
-        <p>Welcome to Express</p>
-    </div>
 
     <div class="row">
+        <div class="col">
+            <h1>Express</h1>
+            <p>Welcome to Express</p>
+        </div>
+    </div>
+    <div class="row" id="preLogin" style="padding-top: 100px">
+        <form id="nameInsertion">
+            <div class="col">
+                <div class="d-flex align-items-center h-100">
+                    <div class="mx-auto">
+                        <div class="row bg-success bg-gradient" style="--bs-bg-opacity: .5">
+                            <div class="col-12" style="padding-bottom: 20px">
+                                <label for="name">Insert name</label>
+                            </div>
+                            <div class="col-12" style="padding-bottom: 20px">
+                                <input type="text" id="name" name="name" placeholder="Enter name" required>
+                                <p id="invalidName" hidden="hidden" style="color:darkred">
+                                    Name is invalid.
+                                </p>
+                            </div>
+                            <div class="col-12" style="padding-bottom: 20px">
+                                <button id="loginBtn" type="submit" class="btn btn-warning">Login</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+
+    <div class="row" hidden="hidden" id="afterLogin">
         <form action="/api/resources" method="get" id="ajaxformget">
             Product ID: <input type="date" name="productId1" id="productId1"><br/>
             <input type="submit" id="commentAddition" value="GET request example"><br/><br/>

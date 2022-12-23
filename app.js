@@ -19,5 +19,4 @@ app.use(express.static(path.join(__dirname, 'public'))); //connects 'public' fol
 // app.user('/', registerRouter)
 app.use('/', indexRouter);
 
-
 module.exports = app;
