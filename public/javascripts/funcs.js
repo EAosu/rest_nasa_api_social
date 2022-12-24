@@ -17,7 +17,7 @@ const validateName = (event) =>{
 
 function displayImagesFromURL(event) {
     event.preventDefault()
-    let endDate = new Date(document.getElementById("productId1").value)
+    let endDate = new Date(document.getElementById("endDate").value)
     // Fetch the JSON from the given URL
     fetch(getUrl(currDate)).then(response => response.json()).then(function(data){
         //currentIndex = 0 //since its global and we made a new request
@@ -66,20 +66,15 @@ function displayImagesBatch(data) {
     }
     document.getElementById("imagesList").append(currBatch)
 }
-
 const initListItem = () => {
-    let item = document.createElement('li')
-    let row = document.createElement('div')
-    item.className='list-group-item'
-    row.className="row"
+    let item = createElement('li','list-group-item')
+    let row = createElement('div','row')
     return {item, row}
 }
 
 const getImageCol = (elem) => {
-    let imageCol = document.createElement('div')
-    imageCol.className="col-xl-8 col-md-6"
-    let img = document.createElement('img')
-    img.className="img-fluid"
+    let imageCol = createElement('div','col-xl-8 col-md-6')
+    let img = createElement('img','img-fluid')
     img.src = `${elem['url']}`
     imageCol.append(img)
     return imageCol
@@ -88,28 +83,50 @@ const getImageInfo = (elem) => {
     let col = document.createElement('div')
     col.className="col-xl-4 col-md-6"
     let descriptionRow = getDescriptionRow(elem)
-    let messagesRow = getMessagesRow(elem)
+
     col.append(descriptionRow)
-    col.append(messagesRow)
+
     return col
 }
+
 const getDescriptionRow = (elem) => {
 
     let paragraphs = getDescription(elem)
-    let descCol= appendMultiple(paragraphs.date,paragraphs.header,paragraphs.explanation,paragraphs.copyright)
+    let descCol= appendMultiple('col',paragraphs.date,paragraphs.header,paragraphs.explanation,paragraphs.copyright)
+    let addMessageBtn = createElement('button','btn btn-secondary','Add message')
 
-    let hideDescriptionBtn = document.createElement('button')
-    hideDescriptionBtn.className = "btn btn-info"
-    hideDescriptionBtn.innerText = "Show less"
+    addMessageBtn.addEventListener('click', function(event){
+
+    })
+    let messageBox = getTextArea(5,33,false,"Insert message here (up to 256 characters)","50","50")
+    messageBox.setAttribute('maxlength','256')
+
+    let hideDescriptionBtn = createElement('button', 'btn btn-info',"Show less")
+    hideDescriptionBtn.style.marginBottom="30px"
     hideDescriptionBtn.addEventListener('click', function (event) {
         event.preventDefault()
         changeDisplay(hideDescriptionBtn,paragraphs.explanation,paragraphs.copyright, paragraphs.date)
     })
-    let descRow = appendMultiple(hideDescriptionBtn,descCol)
+
+    let descRow = appendMultiple("row",descCol,hideDescriptionBtn,messageBox,addMessageBtn)
     descRow.className = "row"
 
     return descRow
 }
+
+const getTextArea = (rowsLength, colsLength, readOnly,placeHolder = "",size="",length="")=>{
+    let textBox = createElement('textarea')
+    textBox.setAttribute('rows',rowsLength)
+    textBox.setAttribute('cols',colsLength)
+    textBox.readOnly = readOnly
+    textBox.setAttribute('size',size)
+    textBox.setAttribute('length',length)
+    textBox.style.resize = 'none';
+    textBox.placeholder =  placeHolder
+    return textBox
+}
+
+
 const changeDisplay = (button,...paragraphs)=>{
     paragraphs.forEach(paragraph => {
         if(paragraph.getAttribute('hidden') === null)
@@ -124,9 +141,8 @@ const changeDisplay = (button,...paragraphs)=>{
 }
 
 
-const appendMultiple = (...data) =>{
-    let div = document.createElement('div')
-    div.className="col"
+const appendMultiple = (className,...data) =>{
+    let div = createElement('div',className)
     data.forEach(elem =>{
         div.append(elem)
     })
@@ -137,20 +153,27 @@ const getDescription = (elem)=>{
     let paragraphs = {
         date :   document.createElement('p'),
         header : document.createElement('h5'),
-        explanation :   document.createElement('p'),
+        explanation :   createElement('div','scroll'),
         copyright : document.createElement('p')
     }
     paragraphs.date.innerHTML = `Date: ${elem['date']}`
     paragraphs.header.innerHTML = `${elem['title']}`
     paragraphs.explanation.innerHTML = `${elem['explanation']}`
+    paragraphs.explanation.style.maxHeight = "300px"
+    paragraphs.explanation.style.overflowY = "scroll"
     paragraphs.copyright.innerHTML =  elem['copyright'] !== undefined ? `Copyright: ${elem['copyright']}` : ""
     return paragraphs
 }
-const getMessagesRow = (elem) => {
-    let messagesRow = document.createElement('div')
-    messagesRow.className = "row"
-    return messagesRow
+
+
+const createElement = (tagName, classname="",innerHtml="") =>{
+    let elem = document.createElement(tagName)
+    elem.className = classname
+    elem.innerHTML = innerHtml
+    return elem
 }
+
+
 
 document.addEventListener("DOMContentLoaded", function() {
     document.getElementById("nameInsertion").addEventListener("submit", validateName);
