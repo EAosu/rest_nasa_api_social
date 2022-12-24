@@ -60,7 +60,7 @@ const toNasaFormat = (date) => {
 //Receives a data which is a json from nasa API that contains nasa api. displays 3 elements.
 function displayImagesBatch(data) {
     let currBatch = document.createElement('div')
-    for(let i=currentIndex; i<currentIndex+batchSize; i++) {
+    for(let i=0; i<batchSize; i++) {
         let listItem = initListItem()
         listItem.row.append(getImageCol(data[i]))
         listItem.row.append(getImageInfo(data[i]))
