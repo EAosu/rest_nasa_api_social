@@ -2,8 +2,6 @@ var express = require('express');
 var router = express.Router();
 
 const messagesMap = new Map()
-const msgArray = ['hello','world','im','lookin','4','solutions','to','the','global','warming','problem']
-messagesMap.set('12',msgArray)
 /* GET home page. */
 
 router.get('/', function(req, res) { //I removed the parameter called next (next func)
@@ -15,11 +13,11 @@ router.get('/', function(req, res) { //I removed the parameter called next (next
 router.get('/index/messages/:id/:index', (req, res) => {
   // Get the message ID from the request parameters
   const id = req.params.id;
-  const index = req.params.index
+  const index = req.params.index - 3
    //Find the message with the specified ID
   const messages = messagesMap.get(id)
   // If the message was not found, return a 404 status code
-  if (messages===null) { //index+3 > messages.length isnt logical
+  if (messages===null || messages === undefined) { //index+3 > messages.length isnt logical
     console.log( `index is: ${index}`)
     res.status(450).send('Message not found' + `index is: ${index}`);
     return;
@@ -34,14 +32,16 @@ router.get('/index/messages/:id/:index', (req, res) => {
 });
 
 
-router.post('/index/messages', (req, res) => {
+router.post('/index/messages/:id/:msg', (req, res) => {
   // Get the message text from the request body
-  const text = req.body.text;
+  const msg = req.body.msg;
   const id = req.body.id
-  insertMessage(id,text)
+  console.log(msg + " " + id)
+  insertMessage(id,msg)
 
   // Return a success response
-  res.send('Message added successfully');
+  res.json("Message added successfully")
+  //res.send('Message added successfully');
 });
 
 const insertMessage = (entry, message) => {
@@ -50,6 +50,8 @@ const insertMessage = (entry, message) => {
     messagesMap.set(entry, [message])
   else
     messages.push(message)
+
+  console.log(messagesMap.get(entry))
 }
 
 

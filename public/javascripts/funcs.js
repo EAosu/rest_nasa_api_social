@@ -62,9 +62,9 @@ function displayImagesBatch(data) {
     let listItem
     for(let i=0; i<batchSize; i++) {
         if(displayIndex%2===0)
-            listItem = initListItem('row bg-success p-2 bg-opacity-25 my-3')
+            listItem = initListItem('row bg-success bg-opacity-25 mb-4')
         else
-            listItem = initListItem('row bg-danger bg-opacity-25 my-3')
+            listItem = initListItem('row bg-danger bg-opacity-25 mb-4')
         listItem.row.append(getImageCol(data[i]))
         listItem.row.append(getImageInfo(data[i]))
         listItem.row.append(getMessagesCol(data[i]['date']))
@@ -82,7 +82,7 @@ const initListItem = (cname="row") => {
 }
 
 const getImageCol = (elem) => {
-    let imageCol = createElement('div','col-lg-3 col-md-6 col-sm-12')
+    let imageCol = createElement('div','col-lg-3 col-md-6 col-sm-12 p-4')
     let imgRow = createElement('div','row')
     let img = createElement('img','img-thumbnail')
     img.setAttribute('data-image',elem['url'])
@@ -124,33 +124,54 @@ const getDescriptionRow = (elem) => {
     return descCol
 }
 const getMessagesCol = (id) => {
-    let messagesCol = createElement('div','col-lg-4 col-md-12')
+    let messagesCol = createElement('div','col-lg-4 col-md-12 p-2')
     //let firstRow = createElement('div','row') THIS WILL BE USED I'M JUST REMOVING WARNINGS
-    let secondRow = createElement('div','row')
+
     let index = 0
-    let messageBox = getTextArea(5,33,false,"What's on your mind? (up to 256 characters)")
-    secondRow.append(messageBox)
-    let addMessageBtn = createElement('button','btn btn-secondary','Add message')
-    addMessageBtn.addEventListener('click', function(event){
-    })
-
-    secondRow.append(addMessageBtn)
-
-    let toDisplay = (displayComments((loadComments('12',index)),id))
+    let toDisplay = (displayComments((loadComments(id,index)),id))
     if(toDisplay !== -1)
         messagesCol.append(toDisplay)
     let loadMoreBtn = createElement('button',`btn btn-primary ${id}`,'Show more comments')
     loadMoreBtn.addEventListener('click',function(){
         index += batchSize
-        let toDisplay = displayComments(loadComments('12', index),id)
+        let toDisplay = displayComments(loadComments(id, index),id)
         if(toDisplay !== -1)
             messagesCol.append(toDisplay)
     })
 
-    messagesCol.append(secondRow)
+    messagesCol.append(createMsgArea(id))
     messagesCol.append(loadMoreBtn)
     return messagesCol
 }
+
+const createMsgArea = (id) => {
+    let msg = ""
+    //----------------------------------
+    let messageBox = getTextArea(5,33,false,"What's on your mind? (up to 256 characters)")
+    messageBox.addEventListener('input', function(event){
+        msg = event.target.value
+    })
+
+    //----------------------------------
+    let addMessageBtn = createElement('button','btn btn-secondary','Add message')
+    addMessageBtn.id = `button${id}`
+    addMessageBtn.addEventListener('click', function(event) {
+        fetch(`/index/messages/${id}/${msg}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({id, msg})
+        })
+            .then(response => response.json())
+            .then(response => {
+                console.log(response)
+                return response
+            })
+    });
+    return appendMultiple('row' ,messageBox, addMessageBtn);
+}
+
 let displayComments = (comments,id) =>{
 
     let messagesList = document.getElementById(id)
@@ -255,5 +276,4 @@ const createElement = (tagName, classname="",innerHtml="") =>{
 document.addEventListener("DOMContentLoaded", function() {
     document.getElementById("nameInsertion").addEventListener("submit", validateName);
     document.getElementById("ajaxformget").addEventListener("submit", displayImagesFromURL);
-
 });
