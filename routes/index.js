@@ -13,34 +13,40 @@ router.get('/', function(req, res) { //I removed the parameter called next (next
 router.get('/index/messages/:id/:index', (req, res) => {
   // Get the message ID from the request parameters
   const id = req.params.id;
-  const index = req.params.index - 3
+  const index = req.params.index
    //Find the message with the specified ID
   const messages = messagesMap.get(id)
   // If the message was not found, return a 404 status code
   if (messages===null || messages === undefined) { //index+3 > messages.length isnt logical
     console.log( `index is: ${index}`)
-    res.status(450).send('Message not found' + `index is: ${index}`);
+    res.status(350).send();
     return;
   }
   let toReturn = []
-  for(let i=index; (i<index+3&& i<messages.length); i++)
+
+  for(let i=index; i< Math.min((index+3),messages.length); i++)
     if( messages[i] !== undefined )
       toReturn.push( messages[i])
 
-  console.log(toReturn)
+  console.log(toReturn)//just a check
   res.json(toReturn);
 });
 
 
 router.post('/index/messages/:id/:msg', (req, res) => {
   // Get the message text from the request body
+  console.log("here")
   const msg = req.body.msg;
+  if(msg===undefined || msg === null || msg.length ===0)
+     res.status(400).send({message : 'This comment is invalid! comment was not added to comment section'})
   const id = req.body.id
   console.log(msg + " " + id)
   insertMessage(id,msg)
 
   // Return a success response
-  res.json("Message added successfully")
+//  res.json("Message added successfully")
+  res.status(200).send({ message: 'Message added successfully' });
+
   //res.send('Message added successfully');
 });
 

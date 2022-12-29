@@ -1,12 +1,16 @@
+//IDEA FOR 2mrow:
+//Move the checkbox of "load manual"/"load auto" to before login. this should fix bugs.
+//also, only display "Load more comments" if you use the manual loader.
+
 let endDate = new Date()
 let batchSize = 3;
 let displayIndex =0
-const defaultStartDate = new Date("1995-06-16")
+const defaultStartDate = new Date("1995-06-16") // This is an hardcoded  and we have to remove it.
 const validateName = (event) =>{
     event.preventDefault()
     name = document.getElementById("name").value.trim()
 
-    if(name.length <= 24 && name.length > 0 && !(/\W/.test(name))){
+    if(name.length <= 24 && name.length > 0 && !(/\W/.test(name))){ //this alone justifies a toggle func
         document.getElementById("preLogin").setAttribute("hidden","hidden")
         document.getElementById("afterLogin").removeAttribute("hidden")
         document.getElementById("invalidName").setAttribute("hidden","hidden")
@@ -19,9 +23,9 @@ function displayImagesFromURL(event) {
     event.preventDefault()
 
     endDate = new Date(document.getElementById("endDate").value)
-    // Fetch the JSON from the given URL
-    fetch(getUrl(endDate)).then(response => response.json()).then(function(data){
-        //currentIndex = 0 //since its global and we made a new request
+    fetch(getUrl(endDate))
+        .then(response => response.json())
+        .then(function(data){
         document.getElementById("imagesList").innerHTML = "";
         displayImagesBatch(data)
         //I didnt use document in purpose
@@ -127,23 +131,50 @@ const getMessagesCol = (id) => {
     let messagesCol = createElement('div','col-lg-4 col-md-12 p-2')
     //let firstRow = createElement('div','row') THIS WILL BE USED I'M JUST REMOVING WARNINGS
 
-    let index = 0
-    let toDisplay = (displayComments((loadComments(id,index)),id))
+    let toDisplay = (displayComments((loadComments(id)),id))
     if(toDisplay !== -1)
         messagesCol.append(toDisplay)
     let loadMoreBtn = createElement('button',`btn btn-primary ${id}`,'Show more comments')
+    let autoLoadMessages = createElement('input','btn-check')
+    autoLoadMessages.type = 'checkbox'
+    let timer = setInterval(function() {loadMoreBtn.click();}, 10000)
     loadMoreBtn.addEventListener('click',function(){
-        index += batchSize
-        let toDisplay = displayComments(loadComments(id, index),id)
-        if(toDisplay !== -1)
+        let toDisplay = displayComments(loadComments(id),id)
+        if(toDisplay !== -1){
             messagesCol.append(toDisplay)
+        }
     })
-
+    let settings = messageSettings(id)
+    settings.input.addEventListener('click',function(){
+        if(!settings.input.checked)
+            timer = setInterval(function() {loadMoreBtn.click();}, 10000)
+        else
+            clearInterval(timer)
+    })
     messagesCol.append(createMsgArea(id))
     messagesCol.append(loadMoreBtn)
+    messagesCol.append(settings.input)
+    messagesCol.append(settings.label)
     return messagesCol
 }
 
+const messageSettings = (id) =>{
+    const input = createElement('input', 'form-check-input');
+    input.type = 'checkbox';
+    input.id = `setting${id}`;
+    input.checked = true
+
+// create the label element
+    const label = createElement('label', 'form-check-label');
+    label.htmlFor = `setting${id}`;
+    label.textContent = "Auto load comments";
+    return {input,label}
+}
+
+
+const autoLoadMessages= (loadMoreBtn, autoLoadMode) =>{
+
+}
 const createMsgArea = (id) => {
     let msg = ""
     //----------------------------------
@@ -151,25 +182,31 @@ const createMsgArea = (id) => {
     messageBox.addEventListener('input', function(event){
         msg = event.target.value
     })
-
     //----------------------------------
     let addMessageBtn = createElement('button','btn btn-secondary','Add message')
     addMessageBtn.id = `button${id}`
     addMessageBtn.addEventListener('click', function(event) {
-        fetch(`/index/messages/${id}/${msg}`, {
+        if(msg.length !== 0)
+            fetch(`/index/messages/${id}/${msg}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({id, msg})
         })
-            .then(response => response.json())
+            .then(function(response){
+                if(response.ok)
+                    return response.json()
+                else{//handle errors, couldn't add the message
+                    console.log(response.message)
+                }
+            })
             .then(response => {
                 console.log(response)
                 return response
             })
     });
-    return appendMultiple('row' ,messageBox, addMessageBtn);
+    return appendMultiple('div' ,messageBox, addMessageBtn);
 }
 
 let displayComments = (comments,id) =>{
@@ -177,6 +214,7 @@ let displayComments = (comments,id) =>{
     let messagesList = document.getElementById(id)
     if(messagesList === null || messagesList === undefined)
     {
+        //setTimeout('',10000)
         console.log(id)
         messagesList  = createElement('div','list-group overflow-auto')
         messagesList.id = id
@@ -190,14 +228,26 @@ let displayComments = (comments,id) =>{
     return -1 //flag
 }
 
-function loadComments(imgDate, commentIndex) {
+function loadComments(imgDate) {
     let comments = createElement('div')
+    let curr = document.getElementById(imgDate)
+    //Checking the amount of messages already received to the client. no need to refresh all messages
+    let commentIndex = curr !== null ? curr.getElementsByClassName('list-group-item').length : 0
 
   fetch(`/index/messages/${imgDate}/${commentIndex}`)
-        .then(response => response.json())
+        .then(function(response){
+            if(response.ok)//Checking the status of what the server returned.
+                return response.json()
+            else if(response.status === 350)//No messages
+                return null
+            else
+                throw new Error("Unexpected error from server")
+        })
         .then(message => {
-            for(let i=0; i<batchSize; i++){
-                let listItem = initListItem('row')
+            if(message === null) //meaning we got nothing from server(look above)
+                return;
+            for(let i=0; i<Math.min(message.length,batchSize); i++){
+                let listItem = initListItem(`row`)
                 listItem.row.innerHTML = message[i]
                 listItem.item.style.backgroundColor = "#3498db"
                 listItem.item.append(listItem.row)
@@ -207,9 +257,7 @@ function loadComments(imgDate, commentIndex) {
             return comments
         })
         .catch(error => {
-            console.log(commentIndex);
-            console.error(error)
-
+            console.log(error);
         });
 
     return comments
