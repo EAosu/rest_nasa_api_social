@@ -28,20 +28,20 @@ router.get('/index/messages/:id/:index', (req, res) => {
     if( messages[i] !== undefined )
       toReturn.push( messages[i])
 
-  console.log(toReturn)//just a check
+
   res.json(toReturn);
 });
 
 
-router.post('/index/messages/:id/:msg', (req, res) => {
+router.post('/index/messages/:id/:msg/:username', (req, res) => {
   // Get the message text from the request body
-  console.log("here")
+
   const msg = req.body.msg;
   if(msg===undefined || msg === null || msg.length ===0)
      res.status(400).send({message : 'This comment is invalid! comment was not added to comment section'})
   const id = req.body.id
-  console.log(msg + " " + id)
-  insertMessage(id,msg)
+  const username = req.body.username
+  insertMessage(id,username,msg)
 
   // Return a success response
 //  res.json("Message added successfully")
@@ -50,14 +50,14 @@ router.post('/index/messages/:id/:msg', (req, res) => {
   //res.send('Message added successfully');
 });
 
-const insertMessage = (entry, message) => {
+const insertMessage = (entry,username, message) => {
   const messages = messagesMap.get(entry)
   if(!messages)
-    messagesMap.set(entry, [message])
+    messagesMap.set(entry, [{username: username, message : message}])
   else
-    messages.push(message)
+    messages.push({username: username, message : message})
 
-  console.log(messagesMap.get(entry))
+
 }
 
 

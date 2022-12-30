@@ -65,10 +65,15 @@ function displayImagesBatch(data) {
     let currBatch = document.createElement('div')
     let listItem
     for(let i=0; i<batchSize; i++) {
-        if(displayIndex%2===0)
+        if(displayIndex%2===0){
             listItem = initListItem('row bg-success bg-opacity-25 mb-4')
-        else
-            listItem = initListItem('row bg-danger bg-opacity-25 mb-4')
+            //listItem.item.style.backgroundColor = "#2de2ba"
+        }
+        else{
+            listItem = initListItem('row bg-success bg-opacity-50 mb-4')
+            //listItem.item.style.backgroundColor = "#6aa56b"
+        }
+
         listItem.row.append(getImageCol(data[i]))
         listItem.row.append(getImageInfo(data[i]))
         listItem.row.append(getMessagesCol(data[i]['date']))
@@ -117,7 +122,8 @@ const getDescriptionRow = (elem) => {
     let paragraphs = getDescription(elem)
     let descCol= appendMultiple('row bg-dark text-white bg-opacity-50 my-3 ',paragraphs.date,paragraphs.header,paragraphs.explanation)
     //let descCol = appendMultiple('row',paragraphs.explanation)
-    let hideDescriptionBtn = createElement('button', 'btn btn-info bg-opacity-50 ',"Show more")
+    let hideDescriptionBtn = createElement('button', 'btn ',"Show more")
+    hideDescriptionBtn.style.backgroundColor = "#bc9753"
     hideDescriptionBtn.style.marginBottom="30px"
     hideDescriptionBtn.addEventListener('click', function (event) {
         event.preventDefault()
@@ -134,51 +140,33 @@ const getMessagesCol = (id) => {
     let toDisplay = (displayComments((loadComments(id)),id))
     if(toDisplay !== -1)
         messagesCol.append(toDisplay)
-    let loadMoreBtn = createElement('button',`btn btn-primary ${id}`,'Show more comments')
+
     let autoLoadMessages = createElement('input','btn-check')
     autoLoadMessages.type = 'checkbox'
-    let timer = setInterval(function() {loadMoreBtn.click();}, 10000)
-    loadMoreBtn.addEventListener('click',function(){
-        let toDisplay = displayComments(loadComments(id),id)
-        if(toDisplay !== -1){
-            messagesCol.append(toDisplay)
-        }
-    })
-    let settings = messageSettings(id)
-    settings.input.addEventListener('click',function(){
-        if(!settings.input.checked)
-            timer = setInterval(function() {loadMoreBtn.click();}, 10000)
-        else
-            clearInterval(timer)
-    })
-    messagesCol.append(createMsgArea(id))
-    messagesCol.append(loadMoreBtn)
-    messagesCol.append(settings.input)
-    messagesCol.append(settings.label)
+    setMessagesTimer(id, messagesCol)
+
+    messagesCol.append(createMsgArea(id,messagesCol))
+
     return messagesCol
 }
-
-const messageSettings = (id) =>{
-    const input = createElement('input', 'form-check-input');
-    input.type = 'checkbox';
-    input.id = `setting${id}`;
-    input.checked = true
-
-// create the label element
-    const label = createElement('label', 'form-check-label');
-    label.htmlFor = `setting${id}`;
-    label.textContent = "Auto load comments";
-    return {input,label}
+const setMessagesTimer = (id, messagesCol) => {
+    setInterval(function(){
+        let toDisplay = displayComments(loadComments(id),id)
+        if(toDisplay !== -1)
+            messagesCol.append(toDisplay)
+    } , 15000)
 }
+
 
 
 const autoLoadMessages= (loadMoreBtn, autoLoadMode) =>{
 
 }
-const createMsgArea = (id) => {
+const createMsgArea = (id,msgsCol) => {
     let msg = ""
+
     //----------------------------------
-    let messageBox = getTextArea(5,33,false,"What's on your mind? (up to 256 characters)")
+    let messageBox = getTextArea(id,5,33,false,"What's on your mind? (up to 256 characters)")
     messageBox.addEventListener('input', function(event){
         msg = event.target.value
     })
@@ -186,15 +174,19 @@ const createMsgArea = (id) => {
     let addMessageBtn = createElement('button','btn btn-secondary','Add message')
     addMessageBtn.id = `button${id}`
     addMessageBtn.addEventListener('click', function(event) {
+        let username = document.getElementById("name").value
+        console.log(username)
         if(msg.length !== 0)
-            fetch(`/index/messages/${id}/${msg}`, {
+            fetch(`/index/messages/${id}/${msg}/${username}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({id, msg})
+            body: JSON.stringify({id, msg,username})
         })
             .then(function(response){
+                document.getElementById(`textBox${id}`).value = ``
+                msg = ""
                 if(response.ok)
                     return response.json()
                 else{//handle errors, couldn't add the message
@@ -202,9 +194,12 @@ const createMsgArea = (id) => {
                 }
             })
             .then(response => {
-                console.log(response)
+                let toDisplay = (displayComments((loadComments(id)),id))
+                if(toDisplay !== -1)
+                    msgsCol.append(toDisplay)
                 return response
             })
+
     });
     return appendMultiple('div' ,messageBox, addMessageBtn);
 }
@@ -247,12 +242,9 @@ function loadComments(imgDate) {
             if(message === null) //meaning we got nothing from server(look above)
                 return;
             for(let i=0; i<Math.min(message.length,batchSize); i++){
-                let listItem = initListItem(`row`)
-                listItem.row.innerHTML = message[i]
-                listItem.item.style.backgroundColor = "#3498db"
-                listItem.item.append(listItem.row)
-                if(listItem.row.innerHTML !== 'undefined')
-                    comments.append(listItem.item)
+
+               // if(listItem.row.innerHTML !== 'undefined')
+                    comments.append(makeMessageGrid(message[i]))
             }
             return comments
         })
@@ -262,9 +254,35 @@ function loadComments(imgDate) {
 
     return comments
 }
+const makeMessageGrid = (message) => {
+    let listItem = initListItem(`row`)
+    listItem.item.style.backgroundColor = "#a5b15e"
 
-const getTextArea = (rowsLength, colsLength, readOnly,placeHolder = "")=>{
+    let secondRow = createElement('div','row')
+    secondRow.append(createElement('p','',message.message))
+
+    let areaForUsername = createElement('div','col-10')
+    areaForUsername.append(createElement('h5','',message.username))
+    listItem.row.append(areaForUsername)
+    if(message.username === document.getElementById("name").value)
+    {
+        let areaForDelete = createElement('div','col-2')
+        let deleteBtn = createElement('button',"btn btn-outline-danger",'x')
+        deleteBtn.addEventListener('click', function(event){
+
+        })
+        areaForDelete.append(deleteBtn)
+        listItem.row.append(areaForDelete)
+    }
+    listItem.item.append(listItem.row)
+    listItem.item.append(secondRow)
+    return listItem.item
+}
+
+
+const getTextArea = (id,rowsLength, colsLength, readOnly,placeHolder = "")=>{
     let textBox = createElement('textarea','form-control')
+    textBox.id = `textBox${id}`
     let div = createElement("div","form-group")
     div.append(textBox)
     textBox.placeholder = placeHolder
