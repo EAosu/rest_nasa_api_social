@@ -138,6 +138,7 @@ const getMessagesCol = (id) => {
     //let firstRow = createElement('div','row') THIS WILL BE USED I'M JUST REMOVING WARNINGS
 
     let toDisplay = (displayComments((loadComments(id)),id))
+    console.log(toDisplay)
     if(toDisplay !== -1)
         messagesCol.append(toDisplay)
 
@@ -177,12 +178,12 @@ const createMsgArea = (id,msgsCol) => {
         let username = document.getElementById("name").value
         console.log(username)
         if(msg.length !== 0)
-            fetch(`/index/messages/${id}/${msg}/${username}`, {
+            fetch(`/index/messages`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({id, msg,username})
+            body: JSON.stringify({id : id, message : msg, username : username})
         })
             .then(function(response){
                 document.getElementById(`textBox${id}`).value = ``
@@ -204,13 +205,10 @@ const createMsgArea = (id,msgsCol) => {
     return appendMultiple('div' ,messageBox, addMessageBtn);
 }
 
-let displayComments = (comments,id) =>{
-
+let displayComments = (comments,id) => {
     let messagesList = document.getElementById(id)
     if(messagesList === null || messagesList === undefined)
     {
-        //setTimeout('',10000)
-        console.log(id)
         messagesList  = createElement('div','list-group overflow-auto')
         messagesList.id = id
         messagesList.style.maxHeight = "200px"
@@ -219,6 +217,10 @@ let displayComments = (comments,id) =>{
         messagesList.append(comments)
         return messagesList
     }
+    console.log(comments.innerHTML)
+    if(comments.innerHTML !== "")
+        messagesList.innerHTML = ""
+
     messagesList.append(comments)
     return -1 //flag
 }
@@ -229,7 +231,7 @@ function loadComments(imgDate) {
     //Checking the amount of messages already received to the client. no need to refresh all messages
     let commentIndex = curr !== null ? curr.getElementsByClassName('list-group-item').length : 0
 
-  fetch(`/index/messages/${imgDate}/${commentIndex}`)
+  fetch(`/index/messages/${imgDate}`)
         .then(function(response){
             if(response.ok)//Checking the status of what the server returned.
                 return response.json()
@@ -241,11 +243,8 @@ function loadComments(imgDate) {
         .then(message => {
             if(message === null) //meaning we got nothing from server(look above)
                 return;
-            for(let i=0; i<Math.min(message.length,batchSize); i++){
-
-               // if(listItem.row.innerHTML !== 'undefined')
-                    comments.append(makeMessageGrid(message[i]))
-            }
+            for(let i=0; i < message.length; i++)
+                comments.append(makeMessageGrid(message[i]))
             return comments
         })
         .catch(error => {
