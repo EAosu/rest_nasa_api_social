@@ -48,12 +48,21 @@
     </div>
 
 
+
     <div class="row mb-3" hidden="hidden" id="afterLogin">
-        <form action="/api/resources" method="get" id="ajaxformget">
+        <form action="" method="get" id="ajaxformget">
             <label for="endDate">Insert date</label>
               <input type="date" name="endDateOnly" id="endDate">
             <input type="submit" id="commentAddition" value="Get images">
         </form>
+    </div>
+
+
+    <div hidden="hidden" id="badRequest">
+        <div class="row bg-danger">
+            <h1>OOps! it seems like you made a bad request. Try making a new one!</h1>
+            <p id="errorcode"></p>
+        </div>
     </div>
 
     <div class="row">

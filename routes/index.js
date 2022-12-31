@@ -10,22 +10,24 @@ router.get('/', function(req, res) { //I removed the parameter called next (next
 });
 
 
-router.get('/index/messages/:id', (req, res) => {
+router.get('/index/messages/:id/:timestamp', (req, res) => {
   // Get the message ID from the request parameters
   const id = req.params.id
-  const timer = new Date()
-
-  if (validateID(id) && messagesMap.has(id)) {
+  const timestamp = req.params.timestamp
+  console.log(validateMessage(id) + ` ` + messagesMap.has(id))
+  if (validateID(id) && messagesMap.has(id) && (timestamp >=0)) {
     //Find the message with the specified ID
     const messages = messagesMap.get(id)
-    const timePassed = timer.getTime() - messages.timestamp
-    if(timePassed >= 3000)
+    const timePassed = timestamp - messages.timestamp
+    if(timePassed <= 3000)
       res.json(messages.content)
     else
-      res.status(350).send({message : 'No changes were made.'})
+      res.status(225).send({message : 'No changes were made, you are up to date!.'})
   }
+  else if(!messagesMap.has(id))
+    res.status(250).send({message : 'There are no messages on this image id'})
   else
-    res.status(400).send({message : 'Message was not found.'})
+    res.status(400).send({message:'an unexpected error'})
 });
 
 
@@ -47,15 +49,23 @@ router.post('/index/messages', (req, res) => {
   res.status(200).send({ message: 'Message added successfully' });
 });
 
-// Deleting a resource
-router.delete('/resources/:id', (req, res) => {
-  // If resource not found, return 404, otherwise delete it
 
-  // and return the deleted object or some value to confirm deletion
-  // we could also return a 204 status code
-  res.send(req.params.id);
+router.delete('/index/deleteMessage', (req, res) => {
+  let username = req.body.username
+  const time = new Date()
+  let id = req.body.imgId
+  let index = req.body.commentIndex
+  if(validateID(id) && index >=0 )//validateName(username)
+  {
+    let messages = messagesMap.get(id)
+    messages.timestamp = time.getTime()
+    messages.content.splice(index,1) //removing the index place
+    res.status(200).send({message: `Message removed successfully`})
+  }
+  else
+    res.status(400).send({message:`Oops.. seems like request is invalid!`})
+
 });
-
 const insertMessage = (entry,username, message) => {
   const messages = messagesMap.get(entry)
   const timer = new Date()

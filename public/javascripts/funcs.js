@@ -24,8 +24,22 @@ function displayImagesFromURL(event) {
 
     endDate = new Date(document.getElementById("endDate").value)
     fetch(getUrl(endDate))
-        .then(response => response.json())
+        .then(response => {
+            if(response.ok){
+                document.getElementById("badRequest").setAttribute("hidden","hidden")
+                return response.json()
+            }
+            else if(300<=response.status  <=500){
+                document.getElementById("imagesList").innerHTML=''
+                document.getElementById("badRequest").removeAttribute("hidden")
+                document.getElementById("errorcode").innerHTML = `Error ${response.status} from nasa API`
+                return null;
+            }
+
+        })
         .then(function(data){
+            if(data ===null)
+                return;
         document.getElementById("imagesList").innerHTML = "";
         displayImagesBatch(data)
         //I didnt use document in purpose
@@ -66,11 +80,11 @@ function displayImagesBatch(data) {
     let listItem
     for(let i=0; i<batchSize; i++) {
         if(displayIndex%2===0){
-            listItem = initListItem('row bg-success bg-opacity-25 mb-4')
+            listItem = initListItem('row rounded bg-success bg-opacity-25 mb-4')
             //listItem.item.style.backgroundColor = "#2de2ba"
         }
         else{
-            listItem = initListItem('row bg-success bg-opacity-50 mb-4')
+            listItem = initListItem('row rounded bg-success bg-opacity-50 mb-4')
             //listItem.item.style.backgroundColor = "#6aa56b"
         }
 
@@ -134,25 +148,26 @@ const getDescriptionRow = (elem) => {
     return descCol
 }
 const getMessagesCol = (id) => {
+    let clientUpdateTime = new Date()
     let messagesCol = createElement('div','col-lg-4 col-md-12 p-2')
     //let firstRow = createElement('div','row') THIS WILL BE USED I'M JUST REMOVING WARNINGS
 
-    let toDisplay = (displayComments((loadComments(id)),id))
+    let toDisplay = (displayComments((loadComments(id,true)),id))
     console.log(toDisplay)
     if(toDisplay !== -1)
         messagesCol.append(toDisplay)
 
     let autoLoadMessages = createElement('input','btn-check')
     autoLoadMessages.type = 'checkbox'
-    setMessagesTimer(id, messagesCol)
+    setMessagesTimer(id, messagesCol,clientUpdateTime)
 
     messagesCol.append(createMsgArea(id,messagesCol))
 
     return messagesCol
 }
-const setMessagesTimer = (id, messagesCol) => {
+const setMessagesTimer = (id, messagesCol,clientUpdateTime) => {
     setInterval(function(){
-        let toDisplay = displayComments(loadComments(id),id)
+        let toDisplay = displayComments(loadComments(id,false),id)
         if(toDisplay !== -1)
             messagesCol.append(toDisplay)
     } , 15000)
@@ -195,9 +210,11 @@ const createMsgArea = (id,msgsCol) => {
                 }
             })
             .then(response => {
-                let toDisplay = (displayComments((loadComments(id)),id))
+                document.getElementById(id) ? document.getElementById(id).innerHTML='' : ''
+                let toDisplay = (displayComments((loadComments(id,false)),id))
+                console.log(toDisplay)
                 if(toDisplay !== -1)
-                    msgsCol.append(toDisplay)
+                    document.getElementById(id).append(toDisplay)
                 return response
             })
 
@@ -225,13 +242,18 @@ let displayComments = (comments,id) => {
     return -1 //flag
 }
 
-function loadComments(imgDate) {
+/**
+ * @param imgDate - the date of the image
+ * @param useUnixEpoch - To know if it's our first time loading this image comments or not. (bool type)
+ * @returns {*} - returns ely's mother on a pizza plate
+ */
+function loadComments(imgDate, useUnixEpoch=false) {
+    let time = new Date();
+    let timer = useUnixEpoch ? 0 : time.getTime()
     let comments = createElement('div')
-    let curr = document.getElementById(imgDate)
-    //Checking the amount of messages already received to the client. no need to refresh all messages
-    let commentIndex = curr !== null ? curr.getElementsByClassName('list-group-item').length : 0
-
-  fetch(`/index/messages/${imgDate}`)
+    if(document.getElementById(imgDate) && useUnixEpoch)
+        document.getElementById(imgDate).innerHTML = ''
+  fetch(`/index/messages/${imgDate}/${timer}`)
         .then(function(response){
             if(response.ok)//Checking the status of what the server returned.
                 return response.json()
@@ -244,7 +266,7 @@ function loadComments(imgDate) {
             if(message === null) //meaning we got nothing from server(look above)
                 return;
             for(let i=0; i < message.length; i++)
-                comments.append(makeMessageGrid(message[i]))
+                comments.append(makeMessageGrid(message[i],imgDate))
             return comments
         })
         .catch(error => {
@@ -253,7 +275,10 @@ function loadComments(imgDate) {
 
     return comments
 }
-const makeMessageGrid = (message) => {
+const makeMessageGrid = (message,id) => {
+    let curr = document.getElementById(id)
+    let commentIndex = curr !== null ? curr.getElementsByClassName('list-group-item').length : 0
+    let username = document.getElementById("name").value
     let listItem = initListItem(`row`)
     listItem.item.style.backgroundColor = "#a5b15e"
 
@@ -268,7 +293,22 @@ const makeMessageGrid = (message) => {
         let areaForDelete = createElement('div','col-2')
         let deleteBtn = createElement('button',"btn btn-outline-danger",'x')
         deleteBtn.addEventListener('click', function(event){
-
+            fetch(`/index/deleteMessage`, {
+                method: 'DELETE',
+                body: JSON.stringify({ imgId: id, username: username , commentIndex : commentIndex}),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }).then(response=>{
+                if(response.ok)
+                    return response.json()
+                else
+                    throw new Error("That's unfortunate! try again ;) ")
+            }).then(response=>{
+                let toDisplay = (displayComments((loadComments(id,true)),id))
+                if(toDisplay !== -1)
+                    curr.append(toDisplay)
+            })
         })
         areaForDelete.append(deleteBtn)
         listItem.row.append(areaForDelete)
