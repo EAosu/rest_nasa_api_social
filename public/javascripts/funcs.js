@@ -1,21 +1,21 @@
 //Another div is added, need to remove current div with current data
 //Also, all the data is displayed on a single div lmao
-let endDate = new Date()
 let batchSize = 3;
 let displayIndex = 0
 const defaultStartDate = new Date("1995-06-16") // This is an hardcoded  and we have to remove it.
 const idUpdateStamps = new Map()
+
 const validateName = (event) => {
     event.preventDefault()
     name = document.getElementById("name").value.trim()
 
     if (name.length <= 24 && name.length > 0 && !(/\W/.test(name)))
-        toggleHid("preLogin","afterLogin","invalidName")
+        toggleHid("preLogin", "afterLogin", "invalidName")
     else
         document.getElementById("invalidName").removeAttribute("hidden")
 }
 
-let toggleHid = (...id) => {
+const toggleHid = (...id) => {
     id.forEach(elem => {
         let element = document.getElementById(elem);
         let hidden = element.getAttribute("hidden");
@@ -27,42 +27,52 @@ let toggleHid = (...id) => {
 }
 
 
-function displayImagesFromURL(event) {
+const displayImagesFromURL = (event) => {
     event.preventDefault()
 
-    endDate = new Date(document.getElementById("endDate").value)
+    let endDate = new Date(document.getElementById("endDate").value)
     fetch(getUrl(endDate))
         .then(response => {
             if (response.ok) {
                 document.getElementById("badRequest").setAttribute("hidden", "hidden")
                 return response.json()
             } else if (300 <= response.status <= 500) {
-                document.getElementById("imagesList").innerHTML = ''
-                document.getElementById("badRequest").removeAttribute("hidden")
-                document.getElementById("errorcode").innerHTML = `Error ${response.status} from nasa API`
+                displayNasaErr(response.status)
                 return null;
             }
-
         })
         .then(function (data) {
-                if (data === null)
-                    return;
-                document.getElementById("imagesList").innerHTML = "";
-                displayImagesBatch(data)
-                //I didnt use document in purpose
-                window.addEventListener("scroll", function (event) {
-                    event.preventDefault()
-
-                    const scrollY = window.scrollY + window.innerHeight + 2;//if communication is poor with api increase '2'
-                    const bodyScroll = document.body.offsetHeight;
-                    if (scrollY >= bodyScroll && endDate >= defaultStartDate) {
-                        endDate.setDate(endDate.getDate() - batchSize)
-                        fetch(getUrl(endDate)).then(response =>
-                            response.json()).then(response => displayImagesBatch(response))
-                    }
-                })
+                if (data !== null) {
+                    emptyInnerHTML("imagesList")
+                    displayImagesBatch(data)
+                    createScrollEvent(endDate)
+                }
             }
         )
+}
+
+const createScrollEvent = (endDate) => {
+    window.addEventListener("scroll", function (event) {
+        event.preventDefault()
+
+        const scrollY = window.scrollY + window.innerHeight + 2;//if communication is poor with api increase '2'
+        const bodyScroll = document.body.offsetHeight;
+        if (scrollY >= bodyScroll && endDate >= defaultStartDate) {
+            endDate.setDate(endDate.getDate() - batchSize)
+            fetch(getUrl(endDate)).then(response =>
+                response.json()).then(response => displayImagesBatch(response))
+        }
+    })
+}
+
+const emptyInnerHTML = (id) => {
+    document.getElementById(id).innerHTML = "";
+}
+
+const displayNasaErr = (status) => {
+    emptyInnerHTML("imagesList")
+    document.getElementById("badRequest").removeAttribute("hidden")
+    document.getElementById("errorcode").innerHTML = `Error ${status} from nasa API`
 }
 
 const getUrl = (currDate) => {
@@ -85,36 +95,28 @@ const toNasaFormat = (date) => {
 //Receives a data which is a json from nasa API that contains nasa api. displays a single batch
 function displayImagesBatch(data) {
     let currBatch = document.createElement('div')
-    let listItem
     for (let i = 0; i < batchSize; i++) {
-        if (displayIndex % 2 === 0) {
-            listItem = initListItem('row rounded bg-success bg-opacity-25 mb-4')
-            //listItem.item.style.backgroundColor = "#2de2ba"
-        } else {
-            listItem = initListItem('row rounded bg-success bg-opacity-50 mb-4')
-            //listItem.item.style.backgroundColor = "#6aa56b"
-        }
-
-        listItem.row.append(getImageCol(data[i]))
-        listItem.row.append(getImageInfo(data[i]))
-        listItem.row.append(getMessagesCol(data[i]['date']))
+        let className = (displayIndex % 2 === 0) ? 'row rounded bg-success bg-opacity-25 mb-4' :
+                                                   'row rounded bg-success bg-opacity-50 mb-4'
+        let listItem = { row : appendMultiple(className, getImageCol(data[i]), getImageInfo(data[i]), getMessagesCol(data[i]['date'])),
+                         item : createElement('li', 'list-group-item')}
         listItem.item.append(listItem.row)
         currBatch.prepend(listItem.row)
         displayIndex++
     }
-
     document.getElementById("imagesList").append(currBatch)
-}
-
-const initListItem = (cname = "row") => {
-    let item = createElement('li', 'list-group-item')
-    let row = createElement('div', cname)
-    return {item, row}
 }
 
 const getImageCol = (elem) => {
     let imageCol = createElement('div', 'col-lg-3 col-md-6 col-sm-12 p-4')
     let imgRow = createElement('div', 'row')
+    imgRow.append(getImageElement(elem))
+    imageCol.append(imgRow)
+
+    return imageCol
+}
+
+const getImageElement = (elem) => {
     let img = createElement('img', 'img-thumbnail')
     img.setAttribute('data-image', elem['url'])
     img.src = `${elem['url']}`
@@ -125,15 +127,13 @@ const getImageCol = (elem) => {
         document.getElementById('modalImage').style.cursor = "default"
         document.getElementById("modalBtn").click()
     })
-    imgRow.append(img)
-    imageCol.append(imgRow)
 
-    return imageCol
+    return img
 }
+
 const getImageInfo = (elem) => {
     let col = createElement('div', 'col-lg-5 col-md-6 col-sm-12')
     let descriptionRow = getDescriptionRow(elem)
-
     col.append(descriptionRow)
 
     return col
@@ -144,79 +144,87 @@ const getDescriptionRow = (elem) => {
     let paragraphs = getDescription(elem)
     let descCol = appendMultiple('row bg-dark text-white bg-opacity-50 my-3 ', paragraphs.date, paragraphs.header, paragraphs.explanation)
     //let descCol = appendMultiple('row',paragraphs.explanation)
-    let hideDescriptionBtn = createElement('button', 'btn ', "Show more")
-    hideDescriptionBtn.style.backgroundColor = "#bc9753"
-    hideDescriptionBtn.style.marginBottom = "30px"
-    hideDescriptionBtn.addEventListener('click', function (event) {
-        event.preventDefault()
-        changeDisplay(hideDescriptionBtn, paragraphs.explanation)
-    })
+    let hideDescriptionBtn = getHideButton(paragraphs.explanation)
     descCol.append(hideDescriptionBtn, paragraphs.copyright)
 
     return descCol
 }
+
+const getHideButton = (paragraphs) => {
+    let hideButton = createElement('button', 'btn ', "Show more")
+    hideButton.style.backgroundColor = "#bc9753"
+    hideButton.style.marginBottom = "30px"
+    hideButton.addEventListener('click', function (event) {
+        event.preventDefault()
+        changeDisplay(hideButton, paragraphs)
+    })
+
+    return hideButton
+}
+
 const getMessagesCol = (id) => {
     let messagesCol = createElement('div', 'col-lg-4 col-md-12 p-2')
-    //let firstRow = createElement('div','row') THIS WILL BE USED I'M JUST REMOVING WARNINGS
     idUpdateStamps.set(id, 0)
     messagesCol.append(createCommentSection( id))
     loadComments(id)
     idUpdateStamps.set(id, Date.now())
-
-
-    setMessagesTimer(id, messagesCol)
-
+    setMessagesTimer(id)
     messagesCol.append(createMsgArea(id, messagesCol))
 
     return messagesCol
 }
-const setMessagesTimer = (id, messagesCol) => {
+
+const setMessagesTimer = (id) => {
     setInterval(function () {
         loadComments(id)
         idUpdateStamps.set(id, Date.now())
     }, 15000)
 }
 
-
-const createMsgArea = (id, msgsCol) => {
-    let msg = ""
+const createMsgArea = (id) => {
+    let message = ""
 
     //----------------------------------
-    let messageBox = getTextArea(id, 5, 33, false, "What's on your mind? (up to 256 characters)")
+    let messageBox = getTextArea(id, 5, 33, false, "What's on your mind? (up to 128 characters)")
     messageBox.addEventListener('input', function (event) {
-        msg = event.target.value
+        message = event.target.value
     })
     //----------------------------------
     let addMessageBtn = createElement('button', 'btn btn-secondary', 'Add message')
     addMessageBtn.id = `button${id}`
-    addMessageBtn.addEventListener('click', function (event) {
+    addMessageBtn.addEventListener('click', function () {
         let username = document.getElementById("name").value
 
-        if (msg.length !== 0)
-            fetch(`/index/messages`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({id: id, message: msg, username: username})
-            })
-                .then(function (response) {
-                    document.getElementById(`textBox${id}`).value = ``
-                    msg = ""
-                    if (response.ok)
-                        return response.json()
-                    else {//handle errors, couldn't add the message
-                        console.log(response.message)
-                    }
-                })
-                .then(response => {
-                    loadComments(id)
-                    return response
-                })
-
+        if (message.length !== 0) {
+            postComment(id, message, username)
+            message = ""
+            document.getElementById(`textBox${id}`).value = ""
+        }
     });
     return appendMultiple('div', messageBox, addMessageBtn);
 }
+
+const postComment = (id, message, username) => {
+    fetch(`/index/messages`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({id: id, message: message, username: username})
+    })
+        .then(function (response) {
+            if (response.ok)
+                return response.json()
+            else {//handle errors, couldn't add the message
+                console.log(response.message)
+            }
+        })
+        .then(response => {
+            loadComments(id)
+            return response
+        })
+}
+
 let createCommentSection = (id) => {
     let messagesList = createElement('div', 'list-group overflow-auto')
     messagesList.id = id
@@ -226,14 +234,13 @@ let createCommentSection = (id) => {
     return messagesList
 }
 
-let displayComments = (comments, id, inInterval = false) => {
+let displayComments = (comments, id) => {
     let messagesList = document.getElementById(id)
-    console.log(comments)
-    if (comments !== null) {
-        messagesList.innerHTML = ''
-    }
     if (comments !== null)
+    {
+        emptyInnerHTML(id)
         messagesList.append(comments)
+    }
 }
 
 /**
@@ -241,13 +248,11 @@ let displayComments = (comments, id, inInterval = false) => {
  * @returns {*} - returns ely's mother on a pizza plate
  */
 function loadComments(imgDate) {
-
     let timer = idUpdateStamps.get(imgDate)
-    //if(document.getElementById(imgDate))
-    // document.getElementById(imgDate).innerHTML = ''
     fetch(`/index/messages/${imgDate}/${timer}`)
         .then(function (response) {
-            if (response.ok)//Checking the status of what the server returned.
+            //Checking the status of what the server returned.
+            if (response.ok)
                 return response.json()
             else if (response.status === 300 || response.status === 325)//No messages
                 return null
@@ -255,58 +260,38 @@ function loadComments(imgDate) {
                 throw new Error("Unexpected error from server")
         })
         .then(messages => {
-            //console.log(messages)
-            if(messages){
-                let comments = createElement('div')
-                idUpdateStamps.set(imgDate, Date.now())
-                for (let i = 0; i < messages.length; i++)
-                    comments.append(makeMessageGrid(messages[i], imgDate,i))
-
-                displayComments(comments,imgDate,false)
-            }
+            if(messages)
+                updateComments(imgDate, messages)
         })
         .catch(error => {
             if (error === "No new messages")
                 return null;
             console.log(error);
         });
-
 }
 
-const makeMessageGrid = (message, id,index) => {
-    let curr = document.getElementById(id)
+const updateComments = (id, messages) => {
+    let comments = createElement('div')
+    idUpdateStamps.set(id, Date.now())
+    for (let i = 0; i < messages.length; i++)
+        comments.append(makeMessageGrid(messages[i], id,i))
 
-    let commentIndex = index
-    let username = document.getElementById("name").value
-    let listItem = initListItem(`row`)
+    displayComments(comments,id)
+}
+
+const makeMessageGrid = (message, id, index) => {
+    let listItem = {
+        item : createElement('li', 'list-group-item'),
+        row : createElement('div', 'row')
+    }
     listItem.item.style.backgroundColor = "#a5b15e"
-
-    let secondRow = createElement('div', 'row')
-    secondRow.append(createElement('p', '', message.message))
-
-    let areaForUsername = createElement('div', 'col-10')
-    areaForUsername.append(createElement('h5', '', message.username))
+    let secondRow = appendMultiple("row", createElement('p', '', message.message))
+    let areaForUsername = appendMultiple("col-10", createElement('h5', '', message.username))
     listItem.row.append(areaForUsername)
     if (message.username === document.getElementById("name").value) {
-        let areaForDelete = createElement('div', 'col-2')
         let deleteBtn = createElement('button', "btn btn-outline-danger", 'x')
-        deleteBtn.addEventListener('click', function (event) {
-            fetch(`/index/deleteMessage`, {
-                method: 'DELETE',
-                body: JSON.stringify({imgId: id, username: username, commentIndex: commentIndex}),
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            }).then(response => {
-                if (response.ok)
-                    return response.json()
-                else
-                    throw new Error("That's unfortunate! try again ;) ")
-            }).then(response => {
-                loadComments(id)
-            })
-        })
-        areaForDelete.append(deleteBtn)
+        deleteBtn.addEventListener('click', function () { deleteComment(id, index) })
+        let areaForDelete = appendMultiple("col-2", deleteBtn)
         listItem.row.append(areaForDelete)
     }
     listItem.item.append(listItem.row)
@@ -314,10 +299,27 @@ const makeMessageGrid = (message, id,index) => {
     return listItem.item
 }
 
+const deleteComment = (id, index) => {
+    fetch(`/index/deleteMessage`, {
+        method: 'DELETE',
+        body: JSON.stringify({ id : id, index : index }),
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    }).then(response => {
+        if (response.ok)
+            return response.json()
+        else
+            throw new Error("That's unfortunate! try again ;) ")
+    }).then(() => {
+        loadComments(id)
+    })
+}
 
 const getTextArea = (id, rowsLength, colsLength, readOnly, placeHolder = "") => {
     let textBox = createElement('textarea', 'form-control')
     textBox.id = `textBox${id}`
+    textBox.maxLength = 128
     let div = createElement("div", "form-group")
     div.append(textBox)
     textBox.placeholder = placeHolder
@@ -372,8 +374,17 @@ const createElement = (tagName, classname = "", innerHtml = "") => {
     return elem
 }
 
+const getToday = () => {
+    let today = new Date()
+    let dd = String(today.getDate()).padStart(2, '0')
+    let mm = String(today.getMonth() + 1).padStart(2, '0') //January is 0!
+    let yyyy = today.getFullYear()
+    today = yyyy + '-' + mm + '-' + dd
+    return today
+}
 
 document.addEventListener("DOMContentLoaded", function () {
+    document.getElementById("endDate").value = getToday()
     document.getElementById("nameInsertion").addEventListener("submit", validateName);
     document.getElementById("ajaxformget").addEventListener("submit", displayImagesFromURL);
 });
