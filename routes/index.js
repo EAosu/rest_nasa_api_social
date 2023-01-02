@@ -34,11 +34,11 @@ router.post('/index/messages', (req, res) => {
   const id = req.body.id
   const username = req.body.username
   if(!validators.validateMessage(message))
-    res.status(400).send({message : 'This comment is invalid! Comment was unsuccessfully added.'})
+    res.status(400).send({message : 'Comment contains spaces only'})
   else if(!validators.validateID(id))
-    res.status(400).send({message : 'The date is not in the correct format (YYYY-MM-DD).'})
+    res.status(400).send({message : 'Invalid date format (YYYY-MM-DD).'})
   else if(!validators.validateUsername(username))
-    res.status(400).send({message : 'The username is invalid.'})
+    res.status(400).send({message : 'Invalid username.'})
   else {
     // Return a success response
     db.insertMessage(id, username, message)
@@ -61,9 +61,8 @@ router.delete('/index/deleteMessage', (req, res) => {
 let validationBundle = {};
 (function validationFunctions(validation) {
   const validateMessage = (message) => {
-    return (message!==undefined && message !== null && (0 < message.length <= 128))
+    return (message!==undefined && message !== null && (0 < message.trim().length <= 128) && (message.trim()))
   }
-
   const validateID = (id) => {
     // NASA date format: YYYY-MM-DD
     const regex = /^\d{4}-\d{2}-\d{2}$/;

@@ -2,7 +2,6 @@
 //Also, all the data is displayed on a single div lmao
 let batchSize = 3;
 let displayIndex = 0
-const defaultStartDate = new Date("1995-06-16") // This is an hardcoded  and we have to remove it.
 const idUpdateStamps = new Map()
 
 const validateName = (event) => {
@@ -29,35 +28,38 @@ const toggleHid = (...id) => {
 
 const displayImagesFromURL = (event) => {
     event.preventDefault()
-
+    let isValid = true
     let endDate = new Date(document.getElementById("endDate").value)
     fetch(getUrl(endDate))
         .then(response => {
-            if (response.ok) {
+            if (response.ok)
                 document.getElementById("badRequest").setAttribute("hidden", "hidden")
-                return response.json()
-            } else if (300 <= response.status <= 500) {
-                displayNasaErr(response.status)
-                return null;
-            }
+            else
+                isValid = false
+            return response.json()
         })
-        .then(function (data) {
-                if (data !== null) {
+        .then(function (response) {
+                if(isValid) {
                     emptyInnerHTML("imagesList")
-                    displayImagesBatch(data)
+                    displayImagesBatch(response)
                     createScrollEvent(endDate)
+                }
+                else{
+                    emptyInnerHTML("imagesList")
+                    document.getElementById("badRequest").removeAttribute("hidden")
+                    if(response.hasOwnProperty('msg'))
+                        document.getElementById("errorcode").innerHTML = `Message from nasa api: <br> ${response.msg}`
                 }
             }
         )
 }
-
 const createScrollEvent = (endDate) => {
     window.addEventListener("scroll", function (event) {
         event.preventDefault()
-
-        const scrollY = window.scrollY + window.innerHeight + 2;//if communication is poor with api increase '2'
+        //if communication is poor with api increase '2'
+        const scrollY = window.scrollY + window.innerHeight + 2;
         const bodyScroll = document.body.offsetHeight;
-        if (scrollY >= bodyScroll && endDate >= defaultStartDate) {
+        if (scrollY >= bodyScroll) {
             endDate.setDate(endDate.getDate() - batchSize)
             fetch(getUrl(endDate)).then(response =>
                 response.json()).then(response => displayImagesBatch(response))
@@ -96,26 +98,48 @@ const toNasaFormat = (date) => {
 function displayImagesBatch(data) {
     let currBatch = document.createElement('div')
     for (let i = 0; i < batchSize; i++) {
-        let className = (displayIndex % 2 === 0) ? 'row rounded bg-success bg-opacity-25 mb-4' :
-                                                   'row rounded bg-success bg-opacity-50 mb-4'
-        let listItem = { row : appendMultiple(className, getImageCol(data[i]), getImageInfo(data[i]), getMessagesCol(data[i]['date'])),
-                         item : createElement('li', 'list-group-item')}
-        listItem.item.append(listItem.row)
-        currBatch.prepend(listItem.row)
-        displayIndex++
+        if(data[i] !== undefined && data[i]) //For tricky dates like 06/20/1995 in which nasa's response is inconsistent
+        {
+            let className = (displayIndex % 2 === 0) ? 'row rounded bg-success bg-opacity-25 mb-4' : 'row rounded bg-success bg-opacity-50 mb-4'
+            let listItem = { row : appendMultiple(className, getMediaCol(data[i]), getImageInfo(data[i]), getMessagesCol(data[i]['date'])),
+                item : createElement('li', 'list-group-item')}
+            listItem.item.append(listItem.row)
+            currBatch.prepend(listItem.row)
+            displayIndex++
+        }
     }
     document.getElementById("imagesList").append(currBatch)
 }
 
-const getImageCol = (elem) => {
-    let imageCol = createElement('div', 'col-lg-3 col-md-6 col-sm-12 p-4')
-    let imgRow = createElement('div', 'row')
-    imgRow.append(getImageElement(elem))
-    imageCol.append(imgRow)
+const getMediaCol = (elem) => {
+    let col = createElement('div', 'col-lg-3 col-md-6 col-sm-12 p-4')
+    let row = createElement('div', 'row')
+    if(elem && elem.hasOwnProperty('media_type'))
+    {
+        if(elem['media_type'] === 'image')
+            row.append(getMediaElement(elem['url'],true))
+        else if(elem['media_type'] === 'video')
+            row.append(getMediaElement(elem['url'], false))
+        col.append(row)
+    }
 
-    return imageCol
+    return col
 }
-
+const getMediaElement = (url, isImage) =>{
+    let media = isImage ? createElement('img', 'img-thumbnail') : createElement('iframe', 'video')
+    isImage ? media.setAttribute('data-image', url) : media.setAttribute('data-video', url)
+    media.src = url
+    media.style.maxHeight = "400px";
+    media.style.maxWidth = "400px";
+    if(isImage){
+        media.addEventListener('click', function () {
+            document.getElementById('modalImage').src = media.src
+            document.getElementById('modalImage').style.cursor = "default"
+            document.getElementById("modalBtn").click()
+        })
+    }
+    return media
+}
 const getImageElement = (elem) => {
     let img = createElement('img', 'img-thumbnail')
     img.setAttribute('data-image', elem['url'])
@@ -184,27 +208,44 @@ const setMessagesTimer = (id) => {
 const createMsgArea = (id) => {
     let message = ""
 
-    //----------------------------------
+
     let messageBox = getTextArea(id, 5, 33, false, "What's on your mind? (up to 128 characters)")
-    messageBox.addEventListener('input', function (event) {
-        message = event.target.value
-    })
+    let errorDisplay = createElement('div','btn btn-danger disabled')
+    errorDisplay.id = `errorBtn${id}`
+    errorDisplay.setAttribute('hidden','hidden')
+    messageBox.addEventListener('input', function (event) {message = event.target.value })
+
     //----------------------------------
     let addMessageBtn = createElement('button', 'btn btn-secondary', 'Add message')
     addMessageBtn.id = `button${id}`
     addMessageBtn.addEventListener('click', function () {
         let username = document.getElementById("name").value
-
-        if (message.length !== 0) {
-            postComment(id, message, username)
+        if (message.trim().length > 0 || true) {
+            errorDisplay.setAttribute('hidden','hidden')
+            postComment(id, message, username, errorDisplay)
             message = ""
             document.getElementById(`textBox${id}`).value = ""
         }
+        else
+            displayResponse(errorDisplay,'Comments contains spaces only')
     });
-    return appendMultiple('div', messageBox, addMessageBtn);
+    let addMessageCol = appendMultiple('col-4', addMessageBtn)
+    let displayErrorCol = appendMultiple('col-8', errorDisplay)
+    displayErrorCol.append(errorDisplay)
+    let row = appendMultiple('row',addMessageCol, displayErrorCol)
+    return appendMultiple('div', messageBox, row);
+}
+const displayResponse = (infoBtn,message, isValid=false) => {
+    infoBtn.innerHTML = message
+    infoBtn.className = isValid ? 'btn btn-success' : 'btn btn-danger'
+    infoBtn.removeAttribute('hidden')
+    setTimeout(function() {infoBtn.setAttribute('hidden','hidden')}, 3000)
+
 }
 
-const postComment = (id, message, username) => {
+
+const postComment = (id, message, username, errorDisplay) => {
+    let isValid = true
     fetch(`/index/messages`, {
         method: 'POST',
         headers: {
@@ -215,13 +256,16 @@ const postComment = (id, message, username) => {
         .then(function (response) {
             if (response.ok)
                 return response.json()
-            else {//handle errors, couldn't add the message
-                console.log(response.message)
+            else //Displaying the error message
+            {
+                isValid = false
+                return response.json()
             }
         })
         .then(response => {
-            loadComments(id)
-            return response
+            if(isValid)
+                loadComments(id)
+            displayResponse(errorDisplay,response.message,isValid)
         })
 }
 
@@ -300,6 +344,8 @@ const makeMessageGrid = (message, id, index) => {
 }
 
 const deleteComment = (id, index) => {
+    let displayBtn = document.getElementById(`errorBtn${id}`)
+    let isValid = true
     fetch(`/index/deleteMessage`, {
         method: 'DELETE',
         body: JSON.stringify({ id : id, index : index }),
@@ -307,12 +353,13 @@ const deleteComment = (id, index) => {
             'Content-Type': 'application/json'
         }
     }).then(response => {
-        if (response.ok)
-            return response.json()
-        else
-            throw new Error("That's unfortunate! try again ;) ")
-    }).then(() => {
-        loadComments(id)
+        if (!response.ok)
+            isValid = false
+        return response.json()
+    }).then((response) => {
+        if(isValid)
+            loadComments(id)
+        displayResponse(displayBtn, response.message,isValid)
     })
 }
 
@@ -350,19 +397,20 @@ const appendMultiple = (className, ...data) => {
 }
 
 const getDescription = (elem) => {
+
     let paragraphs = {
         date: document.createElement('p'),
         header: document.createElement('h5'),
         explanation: createElement('div', 'scroll'),
         copyright: document.createElement('p')
     }
-    paragraphs.date.innerHTML = `Date: ${elem['date']}`
+    paragraphs.date.innerHTML = elem.hasOwnProperty('Date') ? `Date: ${elem['date']}` : ''
     paragraphs.header.innerHTML = `${elem['title']}`
     paragraphs.explanation.innerHTML = `${elem['explanation']}`
     paragraphs.explanation.setAttribute('hidden', 'hidden')
     paragraphs.explanation.style.maxHeight = "300px"
     paragraphs.explanation.style.overflowY = "scroll"
-    paragraphs.copyright.innerHTML = elem['copyright'] !== undefined ? `Copyright: ${elem['copyright']}` : ""
+    paragraphs.copyright.innerHTML = elem['copyright'] !== undefined ? `Copyright: ${elem['copyright']}` : "Copyright: Unknown"
     return paragraphs
 }
 
