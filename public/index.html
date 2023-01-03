@@ -8,18 +8,24 @@
           integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi" crossorigin="anonymous">
     <style>  img:hover { cursor : zoom-in;} </style>
 
-    <style id="preLoginBackground">
+    <style>
+        body {
+            background-image: url("nasabg.png");
+            background-repeat: no-repeat;
+            background-position: center;
+            background-attachment: fixed;
+            background-size: cover;
+        }
     </style>
 </head>
-
 <body class="bg-danger bg-opacity-10">
 
 <div class="container"><!-- Change to container-fluid !-->
 
-    <div class="row">
+    <div class="row" style="color: floralwhite">
         <div class="col">
-            <h1>nodeJs</h1>
-            <p>Welcome to Nasa API display with great ui by top designers nadavma and elys</p>
+            <h1>Exercise 5 - REST API</h1>
+            <p>Welcome to Ex5, enjoy the beautiful pictures from NASA API and make sure to interact with others in the comments.</p>
         </div>
     </div>
     <div class="row"  id="preLogin" style="padding-top: 100px">
@@ -27,9 +33,9 @@
             <div class="col">
                 <div class="d-flex align-items-center h-100">
                     <div class="mx-auto">
-                        <div class="row bg-success bg-gradient" style="--bs-bg-opacity: .5">
+                        <div class="row bg-gradient" style="opacity: 0.8; background-color: #2F4F4F;">
                             <div class="col-12" style="padding-bottom: 20px">
-                                <label for="name">Insert name</label>
+                                <label for="name" style="color:floralwhite">Insert name</label>
                             </div>
                             <div class="col-12" style="padding-bottom: 20px">
                                 <input type="text" id="name" name="name" placeholder="Enter name" required>
@@ -51,7 +57,7 @@
 
     <div class="row mb-3" hidden="hidden" id="afterLogin">
         <form action="" method="get" id="ajaxformget">
-            <label for="endDate">Insert date</label>
+            <label for="endDate" style="color:floralwhite">Insert date</label>
               <input type="date" name="endDateOnly" id="endDate">
             <input type="submit" id="commentAddition" value="Get images">
         </form>
@@ -99,5 +105,4 @@
 
 </script>
 </body>
-
 </html>
